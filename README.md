@@ -27,7 +27,7 @@ See [`defaults/main.yaml`](defaults/main.yaml) for the full list. Most important
 |---|---|---|
 | `vlogs_backup_data_dir` | `/var/lib/victorialogs` | VictoriaLogs `storageDataPath`. |
 | `vlogs_backup_api_url` | `http://127.0.0.1:9428` | VictoriaLogs HTTP API. |
-| `vlogs_backup_s3_endpoint` | `https://s3.pscloud.io` | S3 endpoint. |
+| `vlogs_backup_s3_endpoint` | `https://object.pscloud.io` | S3 endpoint. |
 | `vlogs_backup_s3_region` | `kz-ala-1` | S3 region. |
 | `vlogs_backup_s3_bucket` | `mycar-vlogs-backup` | Bucket name. |
 | `vlogs_backup_s3_prefix` | `vlogs/partitions` | Key prefix inside the bucket. |
