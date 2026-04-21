@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Walk all partitions on disk and ensure each non-current one is present
+# in S3. Back-fills any partition missing from the bucket.
 set -euo pipefail
 
 LOG_DIR="{{ vlogs_backup_log_dir }}"
@@ -6,7 +8,6 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/reconcile-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-API="{{ vlogs_backup_api_url }}"
 DATA_DIR="{{ vlogs_backup_data_dir }}"
 RCLONE_CONF="{{ vlogs_backup_rclone_config_path }}"
 REMOTE="{{ vlogs_backup_rclone_remote }}"
@@ -33,23 +34,13 @@ for PART_PATH in "${DATA_DIR}/partitions"/[0-9]*; do
   fi
 
   echo "Partition ${PART} missing in S3 — backing up"
-  SNAPSHOT_RESP=$(curl -fsS -X POST "${API}/internal/partition/snapshot/create?partition_prefix=${PART}")
-  SNAPSHOT_NAME=$(echo "${SNAPSHOT_RESP}" | grep -oE '"snapshot":"[^"]+"' | cut -d'"' -f4)
-  if [[ -z "${SNAPSHOT_NAME}" ]]; then
-    echo "Failed to parse snapshot for ${PART}: ${SNAPSHOT_RESP}"
-    continue
-  fi
-  SNAPSHOT_PATH="${PART_PATH}/snapshots/${SNAPSHOT_NAME}"
-
   rclone sync \
     --config="${RCLONE_CONF}" \
     --s3-no-check-bucket \
     --transfers=8 --checkers=16 \
     --stats=30s --stats-one-line \
-    "${SNAPSHOT_PATH}/" \
+    "${PART_PATH}/" \
     "${REMOTE}:${BUCKET}/${PREFIX}/${PART}/"
-
-  curl -fsS -X POST "${API}/internal/partition/snapshot/delete?partition_prefix=${PART}&snapshot=${SNAPSHOT_NAME}" || true
 done
 
 echo "[$(date -Is)] Reconcile completed"

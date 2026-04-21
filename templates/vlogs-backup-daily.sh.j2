@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Sync yesterday's VictoriaLogs partition to S3.
+# Closed (non-current) partitions are immutable, so rclone sync directly
+# from disk is safe and avoids depending on the snapshot HTTP API
+# (which is not present in older VictoriaLogs versions).
 set -euo pipefail
 
 LOG_DIR="{{ vlogs_backup_log_dir }}"
@@ -6,7 +10,6 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/daily-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-API="{{ vlogs_backup_api_url }}"
 DATA_DIR="{{ vlogs_backup_data_dir }}"
 RCLONE_CONF="{{ vlogs_backup_rclone_config_path }}"
 REMOTE="{{ vlogs_backup_rclone_remote }}"
@@ -23,24 +26,12 @@ if [[ ! -d "${PARTITION_DIR}" ]]; then
   exit 0
 fi
 
-SNAPSHOT_RESP=$(curl -fsS -X POST "${API}/internal/partition/snapshot/create?partition_prefix=${TARGET_DATE}")
-SNAPSHOT_NAME=$(echo "${SNAPSHOT_RESP}" | grep -oE '"snapshot":"[^"]+"' | cut -d'"' -f4)
-if [[ -z "${SNAPSHOT_NAME}" ]]; then
-  echo "Failed to parse snapshot name from response: ${SNAPSHOT_RESP}"
-  exit 1
-fi
-echo "Snapshot created: ${SNAPSHOT_NAME}"
-
-trap 'curl -fsS -X POST "${API}/internal/partition/snapshot/delete?partition_prefix=${TARGET_DATE}&snapshot=${SNAPSHOT_NAME}" || true' EXIT
-
-SNAPSHOT_PATH="${PARTITION_DIR}/snapshots/${SNAPSHOT_NAME}"
-
 rclone sync \
   --config="${RCLONE_CONF}" \
   --s3-no-check-bucket \
   --transfers=8 --checkers=16 \
   --stats=30s --stats-one-line \
-  "${SNAPSHOT_PATH}/" \
+  "${PARTITION_DIR}/" \
   "${REMOTE}:${BUCKET}/${PREFIX}/${TARGET_DATE}/"
 
 echo "[$(date -Is)] Backup of ${TARGET_DATE} completed"
