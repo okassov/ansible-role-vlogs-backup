@@ -4,7 +4,7 @@ vlogs_backup_data_dir: "{{ victorialogs_data_dir | default('/var/lib/victorialog
 vlogs_backup_api_url: "http://127.0.0.1:9428"
 
 # pscloud S3 connection
-vlogs_backup_s3_endpoint: "https://s3.pscloud.io"
+vlogs_backup_s3_endpoint: "https://object.pscloud.io"
 vlogs_backup_s3_region: "kz-ala-1"
 vlogs_backup_s3_bucket: "mycar-vlogs-backup"
 vlogs_backup_s3_prefix: "vlogs/partitions"
