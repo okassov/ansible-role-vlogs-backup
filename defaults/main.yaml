@@ -1,7 +1,6 @@
 ---
 # VictoriaLogs runtime
-vlogs_backup_data_dir: "{{ victorialogs_data_dir | default('/var/lib/victorialogs') }}"
-vlogs_backup_api_url: "http://127.0.0.1:9428"
+vlogs_backup_data_dir: "{{ victorialogs_data_dir | default('/var/lib/victoria-logs') }}"
 
 # pscloud S3 connection
 vlogs_backup_s3_endpoint: "https://object.pscloud.io"

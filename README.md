@@ -7,7 +7,7 @@ Ansible role to back up [VictoriaLogs](https://docs.victoriametrics.com/victoria
 - Installs `rclone` and `curl`.
 - Renders `/etc/rclone/rclone.conf` with S3 credentials (mode `0600`).
 - Drops two bash scripts in `/usr/local/sbin/`:
-  - `vlogs-backup-daily.sh` — snapshots yesterday's partition via VictoriaLogs snapshot API, `rclone sync`s it to `s3://<bucket>/<prefix>/YYYYMMDD/`, deletes the snapshot (via `trap EXIT`).
+  - `vlogs-backup-daily.sh` — `rclone sync`s yesterday's partition from `<data_dir>/partitions/YYYYMMDD/` to `s3://<bucket>/<prefix>/YYYYMMDD/`. Closed (non-current) partitions are immutable, so syncing them directly from disk is safe.
   - `vlogs-backup-reconcile.sh` — walks all closed partitions on disk, checks if each one is present in S3, and back-fills any missing partition.
 - Installs and enables two systemd timers:
   - `vlogs-backup-daily.timer` — daily at 03:00 (UTC of the host).
@@ -25,8 +25,7 @@ See [`defaults/main.yaml`](defaults/main.yaml) for the full list. Most important
 
 | Variable | Default | Description |
 |---|---|---|
-| `vlogs_backup_data_dir` | `/var/lib/victorialogs` | VictoriaLogs `storageDataPath`. |
-| `vlogs_backup_api_url` | `http://127.0.0.1:9428` | VictoriaLogs HTTP API. |
+| `vlogs_backup_data_dir` | `/var/lib/victoria-logs` | VictoriaLogs `storageDataPath`. |
 | `vlogs_backup_s3_endpoint` | `https://object.pscloud.io` | S3 endpoint. |
 | `vlogs_backup_s3_region` | `kz-ala-1` | S3 region. |
 | `vlogs_backup_s3_bucket` | `mycar-vlogs-backup` | Bucket name. |
