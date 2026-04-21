@@ -14,6 +14,47 @@ REMOTE="{{ vlogs_backup_rclone_remote }}"
 BUCKET="{{ vlogs_backup_s3_bucket }}"
 PREFIX="{{ vlogs_backup_s3_prefix }}"
 
+TG_TOKEN="{{ vlogs_backup_telegram_bot_token }}"
+TG_CHAT="{{ vlogs_backup_telegram_chat_id }}"
+TG_NOTIFY_OK={{ vlogs_backup_telegram_notify_on_success | bool | ternary('1', '0') }}
+HOST=$(hostname)
+ADDED=0
+SKIPPED=0
+
+tg_send() {
+  local text="$1"
+  [[ -z "${TG_TOKEN}" || -z "${TG_CHAT}" ]] && return 0
+  curl -fsS --max-time 10 \
+    -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+    --data-urlencode "chat_id=${TG_CHAT}" \
+    --data-urlencode "text=${text}" \
+    --data-urlencode "parse_mode=Markdown" >/dev/null || true
+}
+
+on_exit() {
+  local rc=$?
+  if [[ $rc -eq 0 ]]; then
+    [[ "${TG_NOTIFY_OK}" == "1" ]] || return 0
+    tg_send "✅ *VictoriaLogs reconcile OK*
+host: \`${HOST}\`
+added partitions: \`${ADDED}\`
+already in S3: \`${SKIPPED}\`
+bucket: \`${BUCKET}/${PREFIX}\`"
+  else
+    local tail_log
+    tail_log=$(tail -n 10 "${LOG_FILE}" 2>/dev/null | sed 's/[`*_]//g')
+    tg_send "❌ *VictoriaLogs reconcile FAILED*
+host: \`${HOST}\`
+added so far: \`${ADDED}\`
+exit code: \`${rc}\`
+log tail:
+\`\`\`
+${tail_log}
+\`\`\`"
+  fi
+}
+trap on_exit EXIT
+
 TODAY=$(date -u +%Y%m%d)
 echo "[$(date -Is)] Reconcile started"
 
@@ -30,6 +71,7 @@ for PART_PATH in "${DATA_DIR}/partitions"/[0-9]*; do
 
   if [[ "${COUNT:-0}" -gt 0 ]]; then
     echo "Partition ${PART} already in S3 (${COUNT} objects) — skip"
+    SKIPPED=$((SKIPPED + 1))
     continue
   fi
 
@@ -41,6 +83,7 @@ for PART_PATH in "${DATA_DIR}/partitions"/[0-9]*; do
     --stats=30s --stats-one-line \
     "${PART_PATH}/" \
     "${REMOTE}:${BUCKET}/${PREFIX}/${PART}/"
+  ADDED=$((ADDED + 1))
 done
 
-echo "[$(date -Is)] Reconcile completed"
+echo "[$(date -Is)] Reconcile completed (added=${ADDED}, skipped=${SKIPPED})"

@@ -35,6 +35,9 @@ See [`defaults/main.yaml`](defaults/main.yaml) for the full list. Most important
 | `vlogs_backup_daily_schedule` | `*-*-* 03:00:00` | systemd `OnCalendar` for daily timer. |
 | `vlogs_backup_reconcile_schedule` | `*-*-01 04:00:00` | systemd `OnCalendar` for reconcile timer. |
 | `vlogs_backup_daily_lag_days` | `1` | Which day to back up (1 = yesterday). |
+| `vlogs_backup_telegram_bot_token` | `""` | Telegram bot token. Empty = notifications disabled. |
+| `vlogs_backup_telegram_chat_id` | `""` | Telegram chat / channel id (numeric, can be negative for groups). |
+| `vlogs_backup_telegram_notify_on_success` | `true` | If `false`, only failures send a message. |
 
 ## Example usage
 

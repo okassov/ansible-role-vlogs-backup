@@ -17,6 +17,45 @@ BUCKET="{{ vlogs_backup_s3_bucket }}"
 PREFIX="{{ vlogs_backup_s3_prefix }}"
 LAG_DAYS={{ vlogs_backup_daily_lag_days }}
 
+TG_TOKEN="{{ vlogs_backup_telegram_bot_token }}"
+TG_CHAT="{{ vlogs_backup_telegram_chat_id }}"
+TG_NOTIFY_OK={{ vlogs_backup_telegram_notify_on_success | bool | ternary('1', '0') }}
+HOST=$(hostname)
+TARGET_DATE=""
+
+tg_send() {
+  local text="$1"
+  [[ -z "${TG_TOKEN}" || -z "${TG_CHAT}" ]] && return 0
+  curl -fsS --max-time 10 \
+    -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+    --data-urlencode "chat_id=${TG_CHAT}" \
+    --data-urlencode "text=${text}" \
+    --data-urlencode "parse_mode=Markdown" >/dev/null || true
+}
+
+on_exit() {
+  local rc=$?
+  if [[ $rc -eq 0 ]]; then
+    [[ "${TG_NOTIFY_OK}" == "1" ]] || return 0
+    tg_send "✅ *VictoriaLogs daily backup OK*
+host: \`${HOST}\`
+partition: \`${TARGET_DATE:-skipped}\`
+bucket: \`${BUCKET}/${PREFIX}/${TARGET_DATE}\`"
+  else
+    local tail_log
+    tail_log=$(tail -n 10 "${LOG_FILE}" 2>/dev/null | sed 's/[`*_]//g')
+    tg_send "❌ *VictoriaLogs daily backup FAILED*
+host: \`${HOST}\`
+partition: \`${TARGET_DATE:-unknown}\`
+exit code: \`${rc}\`
+log tail:
+\`\`\`
+${tail_log}
+\`\`\`"
+  fi
+}
+trap on_exit EXIT
+
 TARGET_DATE=$(date -u -d "${LAG_DAYS} days ago" +%Y%m%d)
 echo "[$(date -Is)] Backing up partition ${TARGET_DATE}"
 

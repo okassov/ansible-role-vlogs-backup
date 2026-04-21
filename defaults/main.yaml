@@ -24,3 +24,9 @@ vlogs_backup_reconcile_schedule: "*-*-01 04:00:00"
 
 # Сколько дней назад заливаем в daily-job (1 = вчера)
 vlogs_backup_daily_lag_days: 1
+
+# Telegram notifications (set token + chat_id to enable; otherwise notify is a no-op)
+vlogs_backup_telegram_bot_token: ""
+vlogs_backup_telegram_chat_id: ""
+# Send a notification on every successful run, not only on failures
+vlogs_backup_telegram_notify_on_success: true
