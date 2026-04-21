@@ -1,0 +1,11 @@
+[Unit]
+Description=Run VictoriaLogs monthly reconcile
+
+[Timer]
+OnCalendar={{ vlogs_backup_reconcile_schedule }}
+Persistent=true
+RandomizedDelaySec=600
+Unit=vlogs-backup-reconcile.service
+
+[Install]
+WantedBy=timers.target

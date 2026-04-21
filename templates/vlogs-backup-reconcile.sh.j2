@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOG_DIR="{{ vlogs_backup_log_dir }}"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/reconcile-$(date +%Y%m%d-%H%M%S).log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+API="{{ vlogs_backup_api_url }}"
+DATA_DIR="{{ vlogs_backup_data_dir }}"
+RCLONE_CONF="{{ vlogs_backup_rclone_config_path }}"
+REMOTE="{{ vlogs_backup_rclone_remote }}"
+BUCKET="{{ vlogs_backup_s3_bucket }}"
+PREFIX="{{ vlogs_backup_s3_prefix }}"
+
+TODAY=$(date -u +%Y%m%d)
+echo "[$(date -Is)] Reconcile started"
+
+shopt -s nullglob
+for PART_PATH in "${DATA_DIR}/partitions"/[0-9]*; do
+  PART=$(basename "${PART_PATH}")
+  if [[ "${PART}" == "${TODAY}" ]]; then
+    continue
+  fi
+
+  COUNT=$(rclone size --config="${RCLONE_CONF}" --json \
+    "${REMOTE}:${BUCKET}/${PREFIX}/${PART}/" 2>/dev/null \
+    | grep -oE '"count":[0-9]+' | cut -d: -f2 || echo 0)
+
+  if [[ "${COUNT:-0}" -gt 0 ]]; then
+    echo "Partition ${PART} already in S3 (${COUNT} objects) — skip"
+    continue
+  fi
+
+  echo "Partition ${PART} missing in S3 — backing up"
+  SNAPSHOT_RESP=$(curl -fsS -X POST "${API}/internal/partition/snapshot/create?partition_prefix=${PART}")
+  SNAPSHOT_NAME=$(echo "${SNAPSHOT_RESP}" | grep -oE '"snapshot":"[^"]+"' | cut -d'"' -f4)
+  if [[ -z "${SNAPSHOT_NAME}" ]]; then
+    echo "Failed to parse snapshot for ${PART}: ${SNAPSHOT_RESP}"
+    continue
+  fi
+  SNAPSHOT_PATH="${PART_PATH}/snapshots/${SNAPSHOT_NAME}"
+
+  rclone sync \
+    --config="${RCLONE_CONF}" \
+    --s3-no-check-bucket \
+    --transfers=8 --checkers=16 \
+    --stats=30s --stats-one-line \
+    "${SNAPSHOT_PATH}/" \
+    "${REMOTE}:${BUCKET}/${PREFIX}/${PART}/"
+
+  curl -fsS -X POST "${API}/internal/partition/snapshot/delete?partition_prefix=${PART}&snapshot=${SNAPSHOT_NAME}" || true
+done
+
+echo "[$(date -Is)] Reconcile completed"

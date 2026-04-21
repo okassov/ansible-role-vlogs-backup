@@ -1,0 +1,11 @@
+[Unit]
+Description=Run VictoriaLogs daily backup
+
+[Timer]
+OnCalendar={{ vlogs_backup_daily_schedule }}
+Persistent=true
+RandomizedDelaySec=300
+Unit=vlogs-backup-daily.service
+
+[Install]
+WantedBy=timers.target

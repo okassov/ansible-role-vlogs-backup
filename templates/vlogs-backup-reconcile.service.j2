@@ -1,0 +1,9 @@
+[Unit]
+Description=VictoriaLogs monthly reconcile of S3 backups
+After=network-online.target victoria-logs-single.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart={{ vlogs_backup_scripts_dir }}/vlogs-backup-reconcile.sh

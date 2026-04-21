@@ -1,0 +1,72 @@
+---
+- name: Install rclone and curl
+  ansible.builtin.apt:
+    name:
+      - rclone
+      - curl
+    state: present
+    update_cache: true
+
+- name: Ensure rclone config dir
+  ansible.builtin.file:
+    path: "{{ vlogs_backup_rclone_config_path | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Render rclone config
+  ansible.builtin.template:
+    src: rclone.conf.j2
+    dest: "{{ vlogs_backup_rclone_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure log dir
+  ansible.builtin.file:
+    path: "{{ vlogs_backup_log_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Render daily backup script
+  ansible.builtin.template:
+    src: vlogs-backup-daily.sh.j2
+    dest: "{{ vlogs_backup_scripts_dir }}/vlogs-backup-daily.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Render reconcile backup script
+  ansible.builtin.template:
+    src: vlogs-backup-reconcile.sh.j2
+    dest: "{{ vlogs_backup_scripts_dir }}/vlogs-backup-reconcile.sh"
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Render systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - vlogs-backup-daily.service
+    - vlogs-backup-daily.timer
+    - vlogs-backup-reconcile.service
+    - vlogs-backup-reconcile.timer
+  notify: reload systemd
+
+- name: Enable and start backup timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  loop:
+    - vlogs-backup-daily.timer
+    - vlogs-backup-reconcile.timer

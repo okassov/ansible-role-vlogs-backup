@@ -1,0 +1,27 @@
+---
+# VictoriaLogs runtime
+vlogs_backup_data_dir: "{{ victorialogs_data_dir | default('/var/lib/victorialogs') }}"
+vlogs_backup_api_url: "http://127.0.0.1:9428"
+
+# pscloud S3 connection
+vlogs_backup_s3_endpoint: "https://s3.pscloud.io"
+vlogs_backup_s3_region: "kz-ala-1"
+vlogs_backup_s3_bucket: "mycar-vlogs-backup"
+vlogs_backup_s3_prefix: "vlogs/partitions"
+vlogs_backup_s3_access_key: ""   # переопределяется в group_vars/vlogs.yaml
+vlogs_backup_s3_secret_key: ""   # переопределяется в group_vars/vlogs.yaml
+
+# rclone
+vlogs_backup_rclone_remote: "pscloud"
+vlogs_backup_rclone_config_path: "/etc/rclone/rclone.conf"
+
+# Scripts / logs
+vlogs_backup_scripts_dir: "/usr/local/sbin"
+vlogs_backup_log_dir: "/var/log/vlogs-backup"
+
+# systemd OnCalendar расписания
+vlogs_backup_daily_schedule: "*-*-* 03:00:00"
+vlogs_backup_reconcile_schedule: "*-*-01 04:00:00"
+
+# Сколько дней назад заливаем в daily-job (1 = вчера)
+vlogs_backup_daily_lag_days: 1

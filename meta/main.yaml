@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: vlogs_backup
+  namespace: okassov
+  author: okassov
+  description: Backup VictoriaLogs partitions to S3-compatible storage via rclone
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - victorialogs
+    - backup
+    - s3
+    - rclone
+    - monitoring
+
+dependencies: []
